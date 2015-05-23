@@ -1,0 +1,202 @@
+\subsection{Syntaktiske kategorier}
+
+Der adskilles ikke mellem arismetiske og boolske expressions i de syntaktiske kategorier, da disse kan defineres sammen på grund af typesystemet. Eventuelle tvetydigheder løses i den komplette kontekst-fri grammatik.
+
+\begin{itemize}
+    \item $ i \in \textbf{int} $ - Heltal
+    \item $ fp \in \textbf{FPoints} $ - Decimaltal
+    \item $ e \in \textbf{Exp} $ - Expressions
+    \item $ x \in \textbf{Var} $ - Variabler
+    \item $ St \in \textbf{Stm} $ - Statements
+    \item $ T \in \textbf{Types} $ - Typer
+    \item $ F \in \textbf{Fnames} $ - Funktionsnavne
+    \item $ S \in \textbf{Snames} $ - Struct-navne
+    \item $ A \in \textbf{Anames} $ - Array-navne
+    \item $ D_V \in \textbf{DecV} $ - Deklaration af variabler
+    \item $ D_F \in \textbf{DecF} $ - Deklaration af funktioner
+    \item $ D_S \in \textbf{DecS} $ - Deklaration af structs
+    \item $ D_A \in \textbf{DecA} $ - Deklaration af arrays
+\end{itemize}
+
+
+\subsection{Formation rules}
+Også kaldet abstrakt syntaks... blablabla...
+
+\begin{Grammar}
+ \begin{grammar}
+
+ <e> ::= $n$ | $fp$ | $x$ | $A[i]$ | $e_1$ "+" $e_2$ | $e_1$ "-" $e_2$ | $e_1$ "*" $e_2$ | $e_1$ "/" $e_2$ | $e_1$ "\%" $e_2$ | "("$e_1$")" | $x$ "=" $e_1$ | $e$ "?" $e_1$ ":" $e_2$ | $e$"++" | $e$"--" | "-"$e$ | "true" | "false" | $e_1$ "==" $e_2$ | $e_1$ "<" $e_2$ | $e_1$ "<=" $e_2$ | $e_1$ ">" $e_2$ | $e_1$ ">=" $e_2$ | $e_1$ "\&\&" $e_2$ | $e_1$ "||" $e_2$ | "!"$e_1$ | $\epsilon$
+
+ <T> ::= $i$ | $fp$ | "bool"
+ 
+ <St> ::= $St_1$";" $St_2$ | "if" $e_1$ "{" $St$ "}" | "if" $e_1$ "{" $St_1$ "}" "else" "{" $St_2$ "}" | "while" $e$ "{" $St$ "}" | $F$"("$e$")" | "for" "("$e$";" $e$";" $e$")" "{" $St$ "}" | $x$ "+=" $e$ | $x$ "-=" $e$ | $x$ "*=" $e$ | $x$ "/=" $e$ | $x$ "\%=" $e$ | $\epsilon$
+ 
+ <$D_V$> ::= $T$ $x$ "=" $e$";" $D_V$ | $\epsilon$
+ 
+ <$D_F$> ::= $T$ $F$"("$e$")" "{" $St$ "}" $D_F$ | $\epsilon$
+ 
+ <$D_S$> ::= "struct" $S$ "{" $D_V$ $D_F$ "}" $D_S$ | $\epsilon$
+ 
+ <$D_A$> ::= $T$ A "[" $i$ "];" $D_A$ | $\epsilon$
+
+  
+ \end{grammar}
+ \caption{Formation rules}\label{gra:formationrules}
+\end{Grammar}
+
+\subsection{Environments}
+
+Der bruges environment-store modellen, hvilket betyder at alle variables skal gemmes i et environment, hvor variablen er associeret med værdien.
+
+$$ \textbf{EnvV} = \textbf{Var} \cup \{next\} \rightharpoonup \textbf{Loc} $$
+
+\noindent samt
+
+$$ \textbf{Sto} = \textbf{Loc} \rightharpoonup \mathds{Z} $$
+
+\noindent Derudover skal structs, arrays og funktioner også have et environment for sig selv. Da disse hænger sammen med de andre environments, får vi at
+
+$$ \textbf{EnvF} = \textbf{Fnames} \rightharpoonup \textbf{EnvV} \times \textbf{EnvF} \times \textbf{EnvS} \times \textbf{EnvA} $$
+
+\noindent ,
+
+$$ \textbf{EnvS} = \textbf{Snames} \rightharpoonup \textbf{EnvV} \times \textbf{EnvF} \times \textbf{EnvS} \times \textbf{EnvA} $$
+
+\noindent samt
+
+$$ \textbf{EnvA} = \textbf{Anames} \rightharpoonup \textbf{EnvV} \times \textbf{EnvF} \times \textbf{EnvS} \times \textbf{EnvA} $$
+
+\subsection{Typechecker}
+I forbindelse med udarbejdelsen af typechecker, er det nødvendigt at opstille transition rules for disse. Der tages udgangspunkt i simple formation rules
+
+\begin{grammar}
+    \centering
+    <B> ::= "Bool" | "Int" | "Float"
+    
+    <T> ::= $B$ | $x$ ":" $B$ $\rightarrow$ "ok"
+\end{grammar}
+
+\noindent hvor \textit{Bool} angiver sættet $\{\top, \bot\}$ for henholdsvis sande og falske boolske værdier - \textit{i} og \textit{fp} er tidligere defineret. Det er derudover også nødvendigt ved et type environment, som indeholder typer af variabler og funktionsnavne defineret ved 
+
+$$ E : \textbf{Var} \cup \textbf{Fnames} \cup \textbf{Snames} \rightharpoonup \textbf{Types} $$
+
+\noindent Derudover kan der skrives $E[x \rightarrow T]$ for type environment $E^\prime$, som er defineret ved 
+
+\[ E^\prime(y) =
+  \begin{cases}
+    E(y)       & \quad \text{if } y \ne x\\
+    T          & \quad \text{if } y = x\\
+  \end{cases}
+\]
+
+\noindent Det kan generelt siges at hvis disse regler er overholdt, er programmet "well-typed"\mbox{}.
+
+\subsubsection{Expressions}
+
+\begin{align*}
+&[\text{INT}]           &  &E \vdash i : \text{Int} & 
+&[\text{FLOAT}]           &  &E \vdash fp : \text{Float}\\\\
+%
+&[\text{PAR}]           &  &\frac{E \vdash e_1 : T}{E \vdash (e_1) : T} & 
+&[\text{VAR}]           &  &\frac{E(x) = T}{E \vdash x : T}\\\\
+%
+&[\top]           &  &E \vdash \top : \text{Bool} & 
+&[\bot]           &  &E \vdash \bot : \text{Bool}\\\\
+%
+&[\text{INC}_I]           &  &\frac{E \vdash e_1 : \text{Int}}{E \vdash e_1\text{++} : \text{Int}} & 
+&[\text{INC}_F]           &  &\frac{E \vdash e_1 : \text{Float}}{E \vdash e_1\text{++} : \text{Float}}\\\\
+%
+&[\text{DEC}_I]           &  &\frac{E \vdash e_1 : \text{Int}}{E \vdash e_1\text{-\medskip-} : \text{Int}} & 
+&[\text{DEC}_F]           &  &\frac{E \vdash e_1 : \text{Float}}{E \vdash e_1\text{-\medskip-} : \text{Float}}\\\\
+%
+&[\text{NEG}_I]           &  &\frac{E \vdash e_1 : \text{Int}}{E \vdash -e_1 : \text{Int}} & 
+&[\text{NEG}_F]           &  &\frac{E \vdash e_1 : \text{Float}}{E \vdash -e_1 : \text{Float}}\\\\
+%
+&[\text{NEG}_B]           &  &\frac{E \vdash e_1 : \text{Bool}}{E \vdash\; !\smallskip e_1 : \text{Bool}} &
+&[\text{ASS}]           &  &\frac{E \vdash x : \text{T}\quad E \vdash e : \text{T}}{E \vdash x = e : \text{ok}}\\\\
+%
+&[\text{ASMD}_{II}]           &  &\frac{E \vdash e_1 : \text{Int} \enskip E \vdash e_2 : \text{Int}}{E \vdash e_1\; op \;e_2 : \text{Int}} & &[\text{ASMD}_{II}]           &  &\frac{E \vdash e_1 : \text{Int} \enskip E \vdash e_2 : \text{Int}}{E \vdash e_1\; op \;e_2 : \text{Int}}\\    
+& & &\text{where}\; op \in \{+, -, *, /\} & & & &\text{where}\; op \in \{+, -, *, /\}\\\\
+%
+&[\text{MOD}_{II}]           &  &\frac{E \vdash e_1 : \text{Int} \enskip E \vdash e_2 : \text{Int}}{E \vdash e_1\; \% \;e_2 : \text{Int}} &
+&[\text{COM}_{BB}]           &  &\frac{E \vdash e_1 : \text{Bool} \enskip E \vdash e_2 : \text{Bool}}{E \vdash e_1\; op \;e_2 : \text{Bool}}\\
+& & & & & & &\text{where}\; op \in \{\&\&, ||\}\\\\
+%
+&[\text{COM}_{II}]           &  &\frac{E \vdash e_1 : \text{Int} \enskip E \vdash e_2 : \text{Int}}{E \vdash e_1\; op \;e_2 : \text{Bool}} & &[\text{COM}_{FF}]           &  &\frac{E \vdash e_1 : \text{Float} \enskip E \vdash e_2 : \text{Float}}{E \vdash e_1\; op \;e_2 : \text{Bool}}\\    
+& & &\text{where}\; op \in & & & &op \in\\
+& & &\{==, !=, <, <=, >, >=\}  & & & &\{==, !=, <, <=, >, >=\}\\\\
+%
+&[\text{ARR}]      &    &\frac{E \vdash A : \text{T}\quad E \vdash i : \text{Int}}{E \vdash \text{A[}i\text{]} : \text{T}}\\\\
+%
+&[\text{TERN}]      &    &\frac{E \vdash e_1 : \text{Bool} \enskip E \vdash e_2 : T \enskip E \vdash e_3 : T}{E \vdash e_1 ?\; e_2 : e_3 : \text{T}} \span\span\span\span\span
+\end{align*}
+
+\subsubsection{Declarations}
+
+\begin{align*}
+&[EMPTY] & &E \vdash \epsilon : \text{ok}\\\\
+%
+&[VAR] & &\frac{E[x \mapsto T] \vdash D_V : \text{ok}\quad E \vdash e : \text{T}}{E \vdash T x = e; D_V : \text{ok}}\\\\
+%
+&[FUNC] & &\frac{E[F \mapsto (x : T_1 \rightarrow \text{ok}, F : T_2 \rightarrow \text{ok})] \vdash D_F : \text{ok}}{E \vdash T_1\; (T_2\; x)\; \{\; St\; \}\; D_P : \text{ok}}\\\\
+%
+&[STRUCT] & &\frac{E[S \mapsto (x : T \rightarrow \text{ok})] \vdash D_S : \text{ok}}{E \vdash \text{struct}\; S\; \{\;T\; x\;\}\; D_S: \text{ok}}\\\\
+%
+&[ARRAY] & &\frac{E[A \mapsto T] \vdash D_A : \text{ok} \quad E \vdash i : \text{Int}}{E \vdash T A [i]; D_A : \text{ok}}
+\end{align*}
+
+\subsubsection{Statements}
+
+\begin{align*}
+&[COMP] & &\frac{E \vdash St_1 : \text{ok}\quad E \vdash St_2 : \text{ok}}{E \vdash St_1;\;St_2 : \text{ok}}\\\\
+&[IF] & &\frac{E \vdash e : \text{Bool}\quad E \vdash St_1 : \text{ok}}{E \vdash \text{if}\; e\; \{\; St_1\; \} : \text{ok}}\\\\
+&[IF-ELSE] & &\frac{E \vdash e : \text{Bool}\quad E \vdash St_1 : \text{ok}\quad E \vdash St_2 : \text{ok}}{E \vdash \text{if}\; e\; \{\; St_1\; \}\; \text{else}\; \{\;St_2\} : \text{ok}}\\\\
+&[WHILE] & &\frac{E \vdash e : \text{Bool}\quad E \vdash S : \text{ok}}{E \vdash while\; e\; \{St\} : \text{ok}}\\\\
+&[FOR] & &\frac{E \vdash e_1 : \text{ok}\enskip E \vdash e_2 : \text{bool}\enskip E \vdash e_3 : \text{ok}\enskip E \vdash : \text{ok}}{E \vdash for\; e_1;\; e_2;\; e_3\; \{St\} : \text{ok}}\\\\
+&[CALL] & &\frac{E \vdash F : (x : T \rightarrow \text{ok})\quad E \vdash e : \text{T}}{E \vdash F(e) : \text{ok}}\\\\
+&[CPS] & &\frac{E \vdash x : T\quad E \vdash e : T}{E \vdash x\; op\; e : \text{ok}}\\
+& & &\text{where}\; op \in \{+=, -=, *=, *=, \%=\}
+\end{align*}
+
+\noindent \textcolor{red}{Der skal laves caption osv.}
+
+\subsection{Transition rules}
+Da der arbejdes med en del environments samt storage, er det fordelagtigt et definere det samlet, så der derved spares plads
+
+$$ Env = \{env_V, env_F, env_S, sto\} $$
+
+\noindent Transitionssystemet er defineret ved
+
+$$ (\textbf{Expr} \cup \mathds{Z} \cup \{\top, \bot\}, \rightarrow, \mathds{Z} \cup \{\top, \bot\} $$
+
+\subsubsection{Expressions}
+
+Arismetiske...
+
+\begin{align*}
+&[VAR] & &Env \vdash x \rightarrow_e v & &\text{if } x = l \text{ and } sto\; l = v\\\\
+&[PLUS] & &\frac{Env \vdash e_1 \rightarrow_e\; v_1\quad Env \vdash e_2 \rightarrow_e\; v_2}{Env \vdash e_1 + e_2 \rightarrow_e\; v} & &\text{where}\; v = v_1 + v_2\\\\
+&[SUB] & &\frac{Env \vdash e_1 \rightarrow_e\; v_1\quad Env \vdash e_2 \rightarrow_e\; v_2}{Env \vdash e_1 - e_2 \rightarrow_e\; v} & &\text{where}\; v = v_1 - v_2\\\\
+&[MULT] & &\frac{Env \vdash e_1 \rightarrow_e\; v_1\quad Env \vdash e_2 \rightarrow_e\; v_2}{Env \vdash e_1 * e_2 \rightarrow_e\; v} & &\text{where}\; v = v_1 \cdot v_2\\\\
+&[DIV] & &\frac{Env \vdash e_1 \rightarrow_e\; v_1\quad Env \vdash e_2 \rightarrow_e\; v_2}{Env \vdash e_1\; /\; e_2 \rightarrow_e\; v} & &\text{where}\; v = \frac{v_1}{v_2}\\\\
+&[MOD] & &\frac{Env \vdash e_1 \rightarrow_e\; v_1\quad Env \vdash e_2 \rightarrow_e\; v_2}{Env \vdash e_1\; \%\; e_2 \rightarrow_e\; v} & &\text{where}\; v = v_1 - (v_2 \cdot \floor*{\frac{v_1}{v_2}})\\\\
+&[PAR] & &\frac{Env \vdash e_1 \rightarrow_e v_1}{Env \vdash (e_1) \rightarrow_e v_1}\\\\
+&[ASS] & &Env \vdash \langle x = e, sto \rangle \rightarrow_e sto[l \mapsto v] & &\text{where } Env \vdash e \rightarrow_e v\\
+& & & & &\text{ and } env_V\; x = l\\\\
+&[TERN_\top] & &\frac{Env \vdash e_2 \rightarrow_e v_1\quad Env \vdash e_3 \rightarrow_e v_2}{Env \vdash e_1 \text{ ? } e_2 \text{ : } e_3 \rightarrow_e v_1} & &\text{if } e_1 \rightarrow_e \top\\\\
+&[TERN_\bot] & &\frac{Env \vdash e_2 \rightarrow_e v_1\quad Env \vdash e_3 \rightarrow_e v_2}{Env \vdash e_1 \text{ ? } e_2 \text{ : } e_3 \rightarrow_e v_2} & &\text{if } e_1 \rightarrow_e \bot\\\\
+&[INC] & &Env \vdash e \text{++} \rightarrow_e v& &\text{where } v = e + 1\\\\
+&[DEC] & &Env \vdash e \text{- -} \rightarrow_e v& &\text{where } v = e - 1\\\\
+&[NEG_{FI}] & &\frac{Env \vdash e_1 \rightarrow_e v_1}{Env \vdash -e_1 \rightarrow_e -v_1}  & &\\\\
+\end{align*}
+
+\noindent Boolske...
+
+\begin{align*}
+&[EQ_\top] & &\frac{Env \vdash e_1 \rightarrow_e v_1 \quad Env \vdash e_2 \rightarrow_e v_2}{Env \vdash e_1 == e_2 \rightarrow_e \top} & &\text{if } v_1 = v_2\\\\
+&[EQ_\bot] & &\frac{Env \vdash e_1 \rightarrow_e v_1 \quad Env \vdash e_2 \rightarrow_e v_2}{Env \vdash e_1 == e_2 \rightarrow_e \bot} & &\text{if } v_1 \ne v_2\\\\
+&[LESS_\top] & &\frac{Env \vdash e_1 \rightarrow_e v_1 \quad Env \vdash e_2 \rightarrow_e v_2}{Env \vdash e_1 < e_2 \rightarrow_e \top} & &\text{if } v_1 < v_2\\\\
+&[LESS_\bot] & &\frac{Env \vdash e_1 \rightarrow_e v_1 \quad Env \vdash e_2 \rightarrow_e v_2}{Env \vdash e_1 < e_2 \rightarrow_e \bot} & &\text{if } v_1 \nless v_2\\\\
+&[LESSE_\top] & &\frac{Env \vdash e_1 \rightarrow_e v_1 \quad Env \vdash e_2 \rightarrow_e v_2}{Env \vdash e_1 <= e_2 \rightarrow_e \top} & &\text{if } v_1 < v_2 \text{ or } v_1 = v_2\\\\
+&[LESSE_\bot] & &\frac{Env \vdash e_1 \rightarrow_e v_1 \quad Env \vdash e_2 \rightarrow_e v_2}{Env \vdash e_1 <= e_2 \rightarrow_e \bot} & &\text{if } v_1 \nless v_2 \text{ or } v_1 \ne v_2\\\\
+\end{align*}
